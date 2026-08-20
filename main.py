@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+from dataset import get_preview, get_info
 
 app = FastAPI()
 
@@ -27,3 +28,13 @@ class DatasetRowChurn(FeatureVectorChurn):
 @app.post("/predict")
 def predict(features: FeatureVectorChurn):
     return features
+
+
+@app.get("/dataset/preview")
+def dataset_preview(n: int = 10):
+    return get_preview(n)
+
+
+@app.get("/dataset/info")
+def dataset_info():
+    return get_info()
