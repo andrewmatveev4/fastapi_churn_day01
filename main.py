@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from dataset import get_preview, get_info
+from dataset import get_preview, get_info, split_data
 
 app = FastAPI()
 
@@ -38,3 +38,9 @@ def dataset_preview(n: int = 10):
 @app.get("/dataset/info")
 def dataset_info():
     return get_info()
+
+
+@app.get("/dataset/split-info")
+def dataset_split_info():
+    return split_data()
+
