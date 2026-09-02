@@ -1,5 +1,10 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import accuracy_score, f1_score
 
 
 def load_dataset():
@@ -44,6 +49,7 @@ def prepare_data():
 
     return X, y, numeric_features, categorical_features
 
+
 def split_data():
     X, y, numeric_features, categorical_features = prepare_data()
     X_train, X_test, y_train, y_test = train_test_split(
@@ -58,4 +64,47 @@ def split_data():
         "test_size": len(X_test),
         "train_churn_distribution": y_train.value_counts().to_dict(),
         "test_churn_distribution": y_test.value_counts().to_dict(),
+    }
+
+
+def build_preprocessor(numeric_features, categorical_features):
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", StandardScaler(), numeric_features),
+            ("cat", OneHotEncoder(), categorical_features),
+        ]
+    )
+    return preprocessor
+
+
+def build_model_pipeline(numeric_features, categorical_features):
+    preprocessor = build_preprocessor(numeric_features, categorical_features)
+    model = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor),
+            ("classifier", LogisticRegression(max_iter=1000)),
+        ]
+    )
+    return model
+
+
+def train_churn_model():
+    X, y, numeric_features, categorical_features = prepare_data()
+    if len(X) == 0:
+        raise ValueError("Dataset is empty")
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=42,
+        stratify=y,
+    )
+    model = build_model_pipeline(numeric_features, categorical_features)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+    return {
+        "accuracy": accuracy,
+        "f1": f1,
     }

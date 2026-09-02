@@ -1,6 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from dataset import get_preview, get_info, split_data
+from dataset import get_preview, get_info, split_data, train_churn_model
 
 app = FastAPI()
 
@@ -44,3 +44,11 @@ def dataset_info():
 def dataset_split_info():
     return split_data()
 
+
+@app.post("/model/train")
+def model_train():
+    try:
+        metrics = train_churn_model()
+        return metrics
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
