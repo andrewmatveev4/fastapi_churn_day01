@@ -5,6 +5,8 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, f1_score
+from datetime import datetime, timezone
+from model_store import save_churn_model
 
 
 def load_dataset():
@@ -101,10 +103,16 @@ def train_churn_model():
     )
     model = build_model_pipeline(numeric_features, categorical_features)
     model.fit(X_train, y_train)
+
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
     f1 = f1_score(y_test, y_pred)
-    return {
-        "accuracy": accuracy,
-        "f1": f1,
+
+    bundle = {
+        "model": model,           # обученный pipeline
+        "metrics": {"accuracy": accuracy, "f1": f1},
+        "trained_at": datetime.now(timezone.utc).isoformat(),
     }
+    save_churn_model(bundle)
+
+    return bundle
