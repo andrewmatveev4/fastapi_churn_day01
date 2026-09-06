@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from dataset import get_preview, get_info, split_data, train_churn_model
 from contextlib import asynccontextmanager
 from model_store import load_churn_model
+import pandas as pd
 
 model_state = {"bundle": None}
 
@@ -10,7 +11,6 @@ model_state = {"bundle": None}
 async def lifespan(app: FastAPI):
     model_state["bundle"] = load_churn_model()
     yield
-    # код ПОСЛЕ yield = выполняется при остановке
 
 app = FastAPI(lifespan=lifespan)
 
@@ -35,9 +35,32 @@ class DatasetRowChurn(FeatureVectorChurn):
     churn: int
 
 
-@app.post("/predict")
-def predict(features: FeatureVectorChurn):
-    return features
+class PredictionResponseChurn(BaseModel):
+    predicted_class: int
+    probabilities: list[float]
+
+
+@app.post("/predict", response_model=list[PredictionResponseChurn])
+def predict(clients: list[FeatureVectorChurn]):
+    if model_state["bundle"] is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Model is not trained yet. Call POST /model/train first.",
+        )
+    model = model_state["bundle"]["model"]
+    df = pd.DataFrame([c.model_dump() for c in clients])
+    prediction = model.predict(df)      
+    proba = model.predict_proba(df)
+
+    results = []
+    for i in range(len(clients)):
+        results.append(
+            PredictionResponseChurn(
+                predicted_class=int(prediction[i]),
+                probabilities=proba[i].tolist(),
+            )
+        )
+    return results
 
 
 @app.get("/dataset/preview")
