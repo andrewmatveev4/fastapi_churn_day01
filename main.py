@@ -41,6 +41,11 @@ class PredictionResponseChurn(BaseModel):
     probabilities: list[float]
 
 
+class TrainingConfigChurn(BaseModel):
+    model_type: str
+    hyperparameters: dict = {}
+
+
 @app.post("/predict")
 def predict(payload: Union[FeatureVectorChurn, list[FeatureVectorChurn]]):
     if model_state["bundle"] is None:
@@ -88,9 +93,9 @@ def dataset_split_info():
 
 
 @app.post("/model/train")
-def model_train():
+def model_train(config: TrainingConfigChurn):
     try:
-        bundle = train_churn_model()
+        bundle = train_churn_model(config.model_type, config.hyperparameters)
         model_state["bundle"] = bundle
         return {
             "metrics": bundle["metrics"],
@@ -109,4 +114,6 @@ def model_status():
         "trained": True,
         "trained_at": bundle["trained_at"],
         "metrics": bundle["metrics"],
+        "model_type": bundle["model_type"],
+        "hyperparameters": bundle["hyperparameters"],
     }

@@ -7,6 +7,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, f1_score
 from datetime import datetime, timezone
 from model_store import save_churn_model
+from sklearn.ensemble import RandomForestClassifier
 
 
 def load_dataset():
@@ -79,18 +80,19 @@ def build_preprocessor(numeric_features, categorical_features):
     return preprocessor
 
 
-def build_model_pipeline(numeric_features, categorical_features):
+def build_model_pipeline(numeric_features, categorical_features, model_type, hyperparameters):
     preprocessor = build_preprocessor(numeric_features, categorical_features)
+    classifier = build_classifier(model_type, hyperparameters)
     model = Pipeline(
         steps=[
             ("preprocessor", preprocessor),
-            ("classifier", LogisticRegression(max_iter=1000)),
+            ("classifier", classifier),
         ]
     )
     return model
 
 
-def train_churn_model():
+def train_churn_model(model_type, hyperparameters):
     X, y, numeric_features, categorical_features = prepare_data()
     if len(X) == 0:
         raise ValueError("Dataset is empty")
@@ -101,7 +103,7 @@ def train_churn_model():
         random_state=42,
         stratify=y,
     )
-    model = build_model_pipeline(numeric_features, categorical_features)
+    model = build_model_pipeline(numeric_features, categorical_features, model_type, hyperparameters)
     model.fit(X_train, y_train)
 
     y_pred = model.predict(X_test)
@@ -109,10 +111,20 @@ def train_churn_model():
     f1 = f1_score(y_test, y_pred)
 
     bundle = {
-        "model": model,           # обученный pipeline
+        "model": model,
         "metrics": {"accuracy": accuracy, "f1": f1},
         "trained_at": datetime.now(timezone.utc).isoformat(),
+        "model_type": model_type,            # ← задача 4
+        "hyperparameters": hyperparameters,  # ← задача 4
     }
     save_churn_model(bundle)
-
     return bundle
+
+
+def build_classifier(model_type, hyperparameters):
+    if model_type == "logreg":
+        return LogisticRegression(**hyperparameters)
+    elif model_type == "random_forest":
+        return RandomForestClassifier(**hyperparameters)
+    else:
+        raise ValueError(f"Unknown model_type: {model_type}")
