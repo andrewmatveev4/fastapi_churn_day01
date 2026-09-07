@@ -8,6 +8,12 @@ from typing import Union
 
 model_state = {"bundle": None}
 
+TYPE_MAP = {
+    "number": "float",
+    "integer": "int",
+    "string": "str",
+}
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     model_state["bundle"] = load_churn_model()
@@ -58,8 +64,10 @@ def predict(payload: Union[FeatureVectorChurn, list[FeatureVectorChurn]]):
     else:
         clients = [payload]
 
-    model = model_state["bundle"]["model"]
-    df = pd.DataFrame([c.model_dump() for c in clients])
+    bundle = model_state["bundle"]
+    model = bundle["model"]
+    feature_order = bundle["numeric_features"] + bundle["categorical_features"]
+    df = pd.DataFrame([c.model_dump() for c in clients])[feature_order]
     prediction = model.predict(df)      
     proba = model.predict_proba(df)
 
@@ -117,3 +125,13 @@ def model_status():
         "model_type": bundle["model_type"],
         "hyperparameters": bundle["hyperparameters"],
     }
+
+
+@app.get("/model/schema")
+def model_schema():
+    schema = FeatureVectorChurn.model_json_schema()
+    features = {}
+    for name, info in schema["properties"].items():
+        json_type = info["type"]
+        features[name] = TYPE_MAP[json_type]
+    return {"features": features}

@@ -114,8 +114,10 @@ def train_churn_model(model_type, hyperparameters):
         "model": model,
         "metrics": {"accuracy": accuracy, "f1": f1},
         "trained_at": datetime.now(timezone.utc).isoformat(),
-        "model_type": model_type,            # ← задача 4
-        "hyperparameters": hyperparameters,  # ← задача 4
+        "model_type": model_type,
+        "hyperparameters": hyperparameters,
+        "numeric_features": numeric_features,        # ← новое
+        "categorical_features": categorical_features, # ← новое
     }
     save_churn_model(bundle)
     return bundle
