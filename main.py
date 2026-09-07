@@ -4,6 +4,7 @@ from dataset import get_preview, get_info, split_data, train_churn_model
 from contextlib import asynccontextmanager
 from model_store import load_churn_model
 import pandas as pd
+from typing import Union
 
 model_state = {"bundle": None}
 
@@ -40,13 +41,18 @@ class PredictionResponseChurn(BaseModel):
     probabilities: list[float]
 
 
-@app.post("/predict", response_model=list[PredictionResponseChurn])
-def predict(clients: list[FeatureVectorChurn]):
+@app.post("/predict")
+def predict(payload: Union[FeatureVectorChurn, list[FeatureVectorChurn]]):
     if model_state["bundle"] is None:
         raise HTTPException(
             status_code=503,
             detail="Model is not trained yet. Call POST /model/train first.",
         )
+    if isinstance(payload, list):
+        clients = payload
+    else:
+        clients = [payload]
+
     model = model_state["bundle"]["model"]
     df = pd.DataFrame([c.model_dump() for c in clients])
     prediction = model.predict(df)      
@@ -60,7 +66,10 @@ def predict(clients: list[FeatureVectorChurn]):
                 probabilities=proba[i].tolist(),
             )
         )
-    return results
+    if isinstance(payload, list):
+        return results
+    else:
+        return results[0]
 
 
 @app.get("/dataset/preview")
