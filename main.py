@@ -1,10 +1,14 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from dataset import get_preview, get_info, split_data, train_churn_model
 from contextlib import asynccontextmanager
 from model_store import load_churn_model
 import pandas as pd
 from typing import Union
+from fastapi.responses import JSONResponse
+from errors import ChurnServiceError
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 model_state = {"bundle": None}
 
@@ -20,6 +24,51 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+
+@app.exception_handler(StarletteHTTPException)
+def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "code": "HTTP_ERROR",
+            "message": exc.detail,
+            "details": {},
+        },
+    )
+
+@app.exception_handler(ChurnServiceError)
+def churn_error_handler(request: Request, exc: ChurnServiceError):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "code": exc.code,
+            "message": exc.message,
+            "details": exc.details,
+        },
+    )
+
+@app.exception_handler(RequestValidationError)
+def validation_error_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={
+            "code": "VALIDATION_ERROR",
+            "message": "Request validation failed.",
+            "details": {"errors": exc.errors()},
+        },
+    )
+
+@app.exception_handler(Exception)
+def unhandled_error_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={
+            "code": "INTERNAL_ERROR",
+            "message": "Internal server error.",
+            "details": {},
+        },
+    )
+
 
 @app.get("/")
 def read_root():
@@ -52,12 +101,38 @@ class TrainingConfigChurn(BaseModel):
     hyperparameters: dict = {}
 
 
-@app.post("/predict")
+@app.post("/predict", responses={
+    503: {
+        "description": "Model not trained",
+        "content": {"application/json": {"example": {
+            "code": "MODEL_NOT_TRAINED",
+            "message": "Model is not trained yet. Call POST /model/train first.",
+            "details": {},
+        }}},
+    },
+    422: {
+        "description": "Request validation failed",
+        "content": {"application/json": {"example": {
+            "code": "VALIDATION_ERROR",
+            "message": "Request validation failed.",
+            "details": {"errors": []},
+        }}},
+    },
+    500: {
+        "description": "Internal server error",
+        "content": {"application/json": {"example": {
+            "code": "INTERNAL_ERROR",
+            "message": "Internal server error.",
+            "details": {},
+        }}},
+    },
+})
 def predict(payload: Union[FeatureVectorChurn, list[FeatureVectorChurn]]):
     if model_state["bundle"] is None:
-        raise HTTPException(
+        raise ChurnServiceError(
+            code="MODEL_NOT_TRAINED",
+            message="Model is not trained yet. Call POST /model/train first.",
             status_code=503,
-            detail="Model is not trained yet. Call POST /model/train first.",
         )
     if isinstance(payload, list):
         clients = payload
@@ -100,17 +175,31 @@ def dataset_split_info():
     return split_data()
 
 
-@app.post("/model/train")
+@app.post("/model/train", responses={
+    400: {
+        "description": "Unknown model type",
+        "content": {"application/json": {"example": {
+            "code": "UNKNOWN_MODEL_TYPE",
+            "message": "Unknown model_type: svm",
+            "details": {"model_type": "svm", "supported": ["logreg", "random_forest"]},
+        }}},
+    },
+    500: {
+        "description": "Empty dataset",
+        "content": {"application/json": {"example": {
+            "code": "EMPTY_DATASET",
+            "message": "Dataset is empty, cannot train the model.",
+            "details": {},
+        }}},
+    },
+})
 def model_train(config: TrainingConfigChurn):
-    try:
-        bundle = train_churn_model(config.model_type, config.hyperparameters)
-        model_state["bundle"] = bundle
-        return {
-            "metrics": bundle["metrics"],
-            "trained_at": bundle["trained_at"],
-        }
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    bundle = train_churn_model(config.model_type, config.hyperparameters)
+    model_state["bundle"] = bundle
+    return {
+        "metrics": bundle["metrics"],
+        "trained_at": bundle["trained_at"],
+    }
 
 
 @app.get("/model/status")

@@ -8,6 +8,7 @@ from sklearn.metrics import accuracy_score, f1_score
 from datetime import datetime, timezone
 from model_store import save_churn_model
 from sklearn.ensemble import RandomForestClassifier
+from errors import ChurnServiceError
 
 
 def load_dataset():
@@ -95,7 +96,11 @@ def build_model_pipeline(numeric_features, categorical_features, model_type, hyp
 def train_churn_model(model_type, hyperparameters):
     X, y, numeric_features, categorical_features = prepare_data()
     if len(X) == 0:
-        raise ValueError("Dataset is empty")
+        raise ChurnServiceError(
+            code="EMPTY_DATASET",
+            message="Dataset is empty, cannot train the model.",
+            status_code=500,
+        )
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
@@ -129,4 +134,9 @@ def build_classifier(model_type, hyperparameters):
     elif model_type == "random_forest":
         return RandomForestClassifier(**hyperparameters)
     else:
-        raise ValueError(f"Unknown model_type: {model_type}")
+        raise ChurnServiceError(
+            code="UNKNOWN_MODEL_TYPE",
+            message=f"Unknown model_type: {model_type}",
+            status_code=400,
+            details={"model_type": model_type, "supported": ["logreg", "random_forest"]},
+        )
