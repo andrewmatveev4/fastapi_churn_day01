@@ -4,11 +4,12 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from datetime import datetime, timezone
 from model_store import save_churn_model
 from sklearn.ensemble import RandomForestClassifier
 from errors import ChurnServiceError
+from history_store import load_history, save_history
 
 
 def load_dataset():
@@ -114,10 +115,12 @@ def train_churn_model(model_type, hyperparameters):
     y_pred = model.predict(X_test)
     accuracy = accuracy_score(y_test, y_pred)
     f1 = f1_score(y_test, y_pred)
+    y_proba = model.predict_proba(X_test)[:, 1]
+    roc_auc = roc_auc_score(y_test, y_proba)
 
     bundle = {
         "model": model,
-        "metrics": {"accuracy": accuracy, "f1": f1},
+        "metrics": {"accuracy": accuracy, "f1": f1, "roc_auc": roc_auc},
         "trained_at": datetime.now(timezone.utc).isoformat(),
         "model_type": model_type,
         "hyperparameters": hyperparameters,
@@ -125,6 +128,17 @@ def train_churn_model(model_type, hyperparameters):
         "categorical_features": categorical_features, # ← новое
     }
     save_churn_model(bundle)
+
+    record = {
+        "trained_at": bundle["trained_at"],
+        "model_type": bundle["model_type"],
+        "hyperparameters": bundle["hyperparameters"],
+        "metrics": bundle["metrics"],
+    }
+    history = load_history()
+    history.append(record)
+    save_history(history)
+
     return bundle
 
 

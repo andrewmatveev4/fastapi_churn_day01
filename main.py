@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from pydantic import BaseModel
 from dataset import get_preview, get_info, split_data, train_churn_model
 from contextlib import asynccontextmanager
+from history_store import load_history
 from model_store import load_churn_model
 import pandas as pd
 from typing import Union
@@ -224,3 +225,35 @@ def model_schema():
         json_type = info["type"]
         features[name] = TYPE_MAP[json_type]
     return {"features": features}
+
+
+@app.get("/model/metrics", responses={
+    404: {
+        "description": "No training history found",
+        "content": {"application/json": {"example": {
+            "code": "NO_TRAINING_HISTORY",
+            "message": "No training history yet. Train a model first.",
+            "details": {},
+        }}},
+    },
+})
+def model_metrics(model_type: str | None = None):
+    history = load_history()
+    if len(history) == 0:
+        raise ChurnServiceError(
+            code="NO_TRAINING_HISTORY",
+            message="No training history yet. Train a model first.",
+            status_code=404,
+        )
+    if model_type is not None:
+        history = [r for r in history if r["model_type"] == model_type]
+    if len(history) == 0:
+        raise ChurnServiceError(
+            code="NO_TRAINING_HISTORY",
+            message=f"No training history for model_type: {model_type}",
+            status_code=404,
+        )
+    return {
+        "latest": history[-1],
+        "history": history,
+    }
