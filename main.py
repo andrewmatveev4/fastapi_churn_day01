@@ -102,9 +102,15 @@ class TrainingConfigChurn(BaseModel):
     hyperparameters: dict = {}
 
 
+class ErrorResponse(BaseModel):
+    code: str
+    message: str
+    details: dict = {}
+
 @app.post("/predict", responses={
     503: {
         "description": "Model not trained",
+        "model": ErrorResponse,
         "content": {"application/json": {"example": {
             "code": "MODEL_NOT_TRAINED",
             "message": "Model is not trained yet. Call POST /model/train first.",
@@ -113,6 +119,7 @@ class TrainingConfigChurn(BaseModel):
     },
     422: {
         "description": "Request validation failed",
+        "model": ErrorResponse,
         "content": {"application/json": {"example": {
             "code": "VALIDATION_ERROR",
             "message": "Request validation failed.",
@@ -121,6 +128,7 @@ class TrainingConfigChurn(BaseModel):
     },
     500: {
         "description": "Internal server error",
+        "model": ErrorResponse,
         "content": {"application/json": {"example": {
             "code": "INTERNAL_ERROR",
             "message": "Internal server error.",
@@ -179,6 +187,7 @@ def dataset_split_info():
 @app.post("/model/train", responses={
     400: {
         "description": "Unknown model type",
+        "model": ErrorResponse,
         "content": {"application/json": {"example": {
             "code": "UNKNOWN_MODEL_TYPE",
             "message": "Unknown model_type: svm",
@@ -187,10 +196,20 @@ def dataset_split_info():
     },
     500: {
         "description": "Empty dataset",
+        "model": ErrorResponse,
         "content": {"application/json": {"example": {
             "code": "EMPTY_DATASET",
             "message": "Dataset is empty, cannot train the model.",
             "details": {},
+        }}},
+    },
+    422: {
+        "description": "Request validation failed",
+        "model": ErrorResponse,
+        "content": {"application/json": {"example": {
+            "code": "VALIDATION_ERROR",
+            "message": "Request validation failed.",
+            "details": {"errors": []},
         }}},
     },
 })
@@ -230,6 +249,7 @@ def model_schema():
 @app.get("/model/metrics", responses={
     404: {
         "description": "No training history found",
+        "model": ErrorResponse,
         "content": {"application/json": {"example": {
             "code": "NO_TRAINING_HISTORY",
             "message": "No training history yet. Train a model first.",
