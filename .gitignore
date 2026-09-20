@@ -4,3 +4,4 @@ venv/
 models/*.joblib
 .DS_Store
 models/*.json
+.pytest_cache/
