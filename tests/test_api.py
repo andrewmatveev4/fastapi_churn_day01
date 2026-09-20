@@ -86,3 +86,16 @@ def test_predict_invalid_input_returns_422():
 
     assert response.status_code == 422
     assert response.json()["code"] == "VALIDATION_ERROR"
+
+
+def test_health_returns_status():
+    client = TestClient(app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert "status" in body
+    assert "model_available" in body
+    assert "dataset_available" in body
+    assert body["dataset_available"] is True

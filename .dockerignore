@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+tests/
+models/*.joblib
+models/*.json
+.flake8
+.gitignore
+.DS_Store

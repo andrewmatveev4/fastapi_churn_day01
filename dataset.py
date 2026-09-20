@@ -10,10 +10,15 @@ from model_store import save_churn_model
 from sklearn.ensemble import RandomForestClassifier
 from errors import ChurnServiceError
 from history_store import load_history, save_history
+import logging
+
+
+logger = logging.getLogger("churn_service")
 
 
 def load_dataset():
     df = pd.read_csv("data/churn_dataset.csv")
+    logger.info("Dataset loaded: %s rows", len(df))
     return df
 
 
@@ -129,6 +134,10 @@ def train_churn_model(model_type, hyperparameters):
         "categorical_features": categorical_features,  # ← новое
     }
     save_churn_model(bundle)
+    logger.info(
+        "Model trained: type=%s accuracy=%.3f f1=%.3f",
+        model_type, accuracy, f1,
+    )
 
     record = {
         "trained_at": bundle["trained_at"],

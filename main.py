@@ -10,7 +10,15 @@ from fastapi.responses import JSONResponse
 from errors import ChurnServiceError
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+import logging
+import os
 
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+logger = logging.getLogger("churn_service")
 model_state = {"bundle": None}
 
 TYPE_MAP = {
@@ -42,6 +50,7 @@ def http_exception_handler(request: Request, exc: StarletteHTTPException):
 
 @app.exception_handler(ChurnServiceError)
 def churn_error_handler(request: Request, exc: ChurnServiceError):
+    logger.warning("ChurnServiceError: code=%s status=%s", exc.code, exc.status_code)
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -54,6 +63,7 @@ def churn_error_handler(request: Request, exc: ChurnServiceError):
 
 @app.exception_handler(RequestValidationError)
 def validation_error_handler(request: Request, exc: RequestValidationError):
+    logger.warning("Validation error")
     return JSONResponse(
         status_code=422,
         content={
@@ -66,6 +76,7 @@ def validation_error_handler(request: Request, exc: RequestValidationError):
 
 @app.exception_handler(Exception)
 def unhandled_error_handler(request: Request, exc: Exception):
+    logger.error("Unhandled exception: %s", exc, exc_info=exc)
     return JSONResponse(
         status_code=500,
         content={
@@ -154,6 +165,7 @@ def predict(payload: Union[FeatureVectorChurn, list[FeatureVectorChurn]]):
     else:
         clients = [payload]
 
+    logger.info("Predict called: %s client(s)", len(clients))
     bundle = model_state["bundle"]
     model = bundle["model"]
     feature_order = bundle["numeric_features"] + bundle["categorical_features"]
@@ -282,4 +294,16 @@ def model_metrics(model_type: str | None = None):
     return {
         "latest": history[-1],
         "history": history,
+    }
+
+
+@app.get("/health")
+def health():
+    model_available = model_state["bundle"] is not None
+    dataset_available = os.path.exists("data/churn_dataset.csv")
+    status = "ok" if (model_available and dataset_available) else "degraded"
+    return {
+        "status": status,
+        "model_available": model_available,
+        "dataset_available": dataset_available,
     }
