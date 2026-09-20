@@ -9,7 +9,7 @@ def load_history():
         return []
     with open(HISTORY_PATH, "r") as f:
         return json.load(f)
-    
+
 
 def save_history(history):
     os.makedirs("models", exist_ok=True)

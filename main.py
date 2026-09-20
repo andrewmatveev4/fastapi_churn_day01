@@ -19,12 +19,14 @@ TYPE_MAP = {
     "string": "str",
 }
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     model_state["bundle"] = load_churn_model()
     yield
 
 app = FastAPI(lifespan=lifespan)
+
 
 @app.exception_handler(StarletteHTTPException)
 def http_exception_handler(request: Request, exc: StarletteHTTPException):
@@ -37,6 +39,7 @@ def http_exception_handler(request: Request, exc: StarletteHTTPException):
         },
     )
 
+
 @app.exception_handler(ChurnServiceError)
 def churn_error_handler(request: Request, exc: ChurnServiceError):
     return JSONResponse(
@@ -48,6 +51,7 @@ def churn_error_handler(request: Request, exc: ChurnServiceError):
         },
     )
 
+
 @app.exception_handler(RequestValidationError)
 def validation_error_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
@@ -58,6 +62,7 @@ def validation_error_handler(request: Request, exc: RequestValidationError):
             "details": {"errors": exc.errors()},
         },
     )
+
 
 @app.exception_handler(Exception)
 def unhandled_error_handler(request: Request, exc: Exception):
@@ -107,6 +112,7 @@ class ErrorResponse(BaseModel):
     message: str
     details: dict = {}
 
+
 @app.post("/predict", responses={
     503: {
         "description": "Model not trained",
@@ -152,7 +158,7 @@ def predict(payload: Union[FeatureVectorChurn, list[FeatureVectorChurn]]):
     model = bundle["model"]
     feature_order = bundle["numeric_features"] + bundle["categorical_features"]
     df = pd.DataFrame([c.model_dump() for c in clients])[feature_order]
-    prediction = model.predict(df)      
+    prediction = model.predict(df)
     proba = model.predict_proba(df)
 
     results = []

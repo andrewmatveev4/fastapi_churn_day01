@@ -109,7 +109,8 @@ def train_churn_model(model_type, hyperparameters):
         random_state=42,
         stratify=y,
     )
-    model = build_model_pipeline(numeric_features, categorical_features, model_type, hyperparameters)
+    model = build_model_pipeline(numeric_features, categorical_features,
+                                 model_type, hyperparameters)
     model.fit(X_train, y_train)
 
     y_pred = model.predict(X_test)
@@ -125,7 +126,7 @@ def train_churn_model(model_type, hyperparameters):
         "model_type": model_type,
         "hyperparameters": hyperparameters,
         "numeric_features": numeric_features,        # ← новое
-        "categorical_features": categorical_features, # ← новое
+        "categorical_features": categorical_features,  # ← новое
     }
     save_churn_model(bundle)
 
