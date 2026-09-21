@@ -23,7 +23,7 @@ def synthetic_churn_df():
 
 @pytest.fixture(autouse=True)
 def reset_model_state():
-    from main import model_state
+    from core.state import model_state
     model_state["bundle"] = None
     yield
     model_state["bundle"] = None

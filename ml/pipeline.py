@@ -6,10 +6,10 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from datetime import datetime, timezone
-from model_store import save_churn_model
+from ml.model_store import save_churn_model
 from sklearn.ensemble import RandomForestClassifier
-from errors import ChurnServiceError
-from history_store import load_history, save_history
+from core.errors import ChurnServiceError
+from ml.history_store import load_history, save_history
 import logging
 
 
@@ -130,8 +130,8 @@ def train_churn_model(model_type, hyperparameters):
         "trained_at": datetime.now(timezone.utc).isoformat(),
         "model_type": model_type,
         "hyperparameters": hyperparameters,
-        "numeric_features": numeric_features,        # ← новое
-        "categorical_features": categorical_features,  # ← новое
+        "numeric_features": numeric_features,
+        "categorical_features": categorical_features,
     }
     save_churn_model(bundle)
     logger.info(

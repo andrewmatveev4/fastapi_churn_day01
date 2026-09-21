@@ -1,4 +1,4 @@
-from dataset import prepare_data, train_churn_model
+from ml.pipeline import prepare_data, train_churn_model
 
 
 def test_prepare_data_splits_x_and_y():
@@ -11,8 +11,8 @@ def test_prepare_data_splits_x_and_y():
 
 
 def test_train_churn_model_produces_metrics(monkeypatch, synthetic_churn_df):
-    import dataset
-    monkeypatch.setattr(dataset, "load_dataset", lambda: synthetic_churn_df)
+    from ml import pipeline
+    monkeypatch.setattr(pipeline, "load_dataset", lambda: synthetic_churn_df)
 
     bundle = train_churn_model("logreg", {})
 

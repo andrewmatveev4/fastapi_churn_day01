@@ -23,8 +23,8 @@ def test_predict_without_model_returns_503():
 
 
 def test_train_status_predict_flow(monkeypatch, synthetic_churn_df):
-    import dataset
-    monkeypatch.setattr(dataset, "load_dataset", lambda: synthetic_churn_df)
+    from ml import pipeline
+    monkeypatch.setattr(pipeline, "load_dataset", lambda: synthetic_churn_df)
 
     client = TestClient(app)
 
@@ -55,8 +55,8 @@ def test_train_status_predict_flow(monkeypatch, synthetic_churn_df):
 
 
 def test_train_unknown_model_type_returns_400(monkeypatch, synthetic_churn_df):
-    import dataset
-    monkeypatch.setattr(dataset, "load_dataset", lambda: synthetic_churn_df)
+    from ml import pipeline
+    monkeypatch.setattr(pipeline, "load_dataset", lambda: synthetic_churn_df)
 
     client = TestClient(app)
 
